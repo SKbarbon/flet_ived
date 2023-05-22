@@ -25,15 +25,14 @@ import time
 
 class VideoContainer (Container):
     """This will show a video you choose."""
-    def __init__(self, video_path:str, play_after_loading=False, video_frame_fit_type:flet.ImageFit=None, content= None, ref = None, key = None, width = None, height= None, left = None, top = None, right = None, bottom= None, expand= None, col = None, opacity= None, rotate= None, scale= None, offset= None, aspect_ratio= None, animate_opacity= None, animate_size = None, animate_position= None, animate_rotation= None, animate_scale= None, animate_offset = None, on_animation_end=None, tooltip = None, visible = None, disabled= None, data = None, padding= None, margin= None, alignment = None, bgcolor= None, gradient= None, blend_mode=BlendMode.NONE, border= None, border_radius= None, image_src= None, image_src_base64= None, image_repeat=None, image_fit=None, image_opacity: OptionalNumber = None, shape=None, clip_behavior= None, ink= None, animate=None, blur=None, shadow= None, url=None, url_target=None, theme=None, theme_mode= None, on_click=None, on_long_press=None, on_hover=None):
+    def __init__(self, video_path:str, play_after_loading=False, video_frame_fit_type:flet.ImageFit=None, video_progress_bar=True, content= None, ref = None, key = None, width = None, height= None, left = None, top = None, right = None, bottom= None, expand= None, col = None, opacity= None, rotate= None, scale= None, offset= None, aspect_ratio= None, animate_opacity= None, animate_size = None, animate_position= None, animate_rotation= None, animate_scale= None, animate_offset = None, on_animation_end=None, tooltip = None, visible = None, disabled= None, data = None, padding= None, margin= None, alignment = None, bgcolor= None, gradient= None, blend_mode=BlendMode.NONE, border= None, border_radius= None, image_src= None, image_src_base64= None, image_repeat=None, image_fit=None, image_opacity: OptionalNumber = None, shape=None, clip_behavior= None, ink= None, animate=None, blur=None, shadow= None, url=None, url_target=None, theme=None, theme_mode= None, on_click=None, on_long_press=None, on_hover=None):
         super().__init__(content, ref, key, width, height, left, top, right, bottom, expand, col, opacity, rotate, scale, offset, aspect_ratio, animate_opacity, animate_size, animate_position, animate_rotation, animate_scale, animate_offset, on_animation_end, tooltip, visible, disabled, data, padding, margin, alignment, bgcolor, gradient, blend_mode, border, border_radius, image_src, image_src_base64, image_repeat, image_fit, image_opacity, shape, clip_behavior, ink, animate, blur, shadow, url, url_target, theme, theme_mode, on_click, on_long_press, on_hover)
         if not os.path.isfile (video_path):
             raise FileNotFoundError ("Cannot find the video at the path you set.")
 
-        self.__video_is_full_loaded = False
         self.__all_frames_of_video = []
-        self.__audio_path = self.convert_video_to_audio (video_path=video_path)
         self.__video_played = False
+        self.video_progress_bar = video_progress_bar
 
         if video_frame_fit_type == None:
             self.video_frame_fit_type = flet.ImageFit.CONTAIN
@@ -49,8 +48,13 @@ class VideoContainer (Container):
             threading.Thread(target=self.read_the_video, args=[video_path], daemon=True).start()
 
         # setup the video audio
-        self.audio_path = self.convert_video_to_audio (video_path)
-        self.get_audio_info(self.audio_path)
+        try:
+            self.audio_path = self.convert_video_to_audio (video_path)
+            self.__audio_path = self.audio_path
+            self.get_audio_info(self.audio_path)
+        except:
+            self.audio_path = None
+            self.__audio_path = None
 
         # get video info
         self.get_video_duration(video_path)
@@ -63,10 +67,28 @@ class VideoContainer (Container):
 
         self.image_frames_viewer = Image(expand=True, visible=False, fit=self.video_frame_fit_type)
         self.video_tool_stack.controls.append(Row([self.image_frames_viewer], alignment="center"))
+
+        self.__video_progress_bar = Container(height=2, width=100, bgcolor=flet.colors.BLUE_200)
+        self.video_tool_stack.controls.append(Row([self.__video_progress_bar], alignment=flet.MainAxisAlignment.START))
+
+        if self.video_progress_bar == False:
+            self.__video_progress_bar.visible = False
+    
+
+    def update_video_progress (self, frame_number):
+        if self.video_progress_bar == False: return
+        percent_of_progress = frame_number / self.video_frames * 1
+        
+        try:
+            self.__video_progress_bar.width = percent_of_progress * 1 * self.width
+        except:
+            self.__video_progress_bar.width = percent_of_progress * 1 * self.page.width
+        if self.__video_progress_bar.page != None: self.__video_progress_bar.update ()
     
 
     def update(self):
         self.image_frames_viewer.fit = self.video_frame_fit_type
+        self.__video_progress_bar.visible = self.video_progress_bar
         return super().update()
         
 
@@ -82,17 +104,21 @@ class VideoContainer (Container):
         # -------
         self.image_frames_viewer.visible = True
         
-        # Initialize Pygame
-        pygame.mixer.init()
-        # Load the audio file
-        audio = pygame.mixer.Sound(self.__audio_path)
-        # Play the audio file
-        audio_state = audio.play()
+        if self.__audio_path != None:
+            # Initialize Pygame
+            pygame.mixer.init()
+            # Load the audio file
+            audio = pygame.mixer.Sound(self.__audio_path)
+            # Play the audio file
+            audio_state = audio.play()
         num = 0
         start_time = time.time()
 
         for I in self.__all_frames_of_video:
             if self.__video_played == False: break
+            # update video progress bar
+            threading.Thread (target=self.update_video_progress, args=[num], daemon=True).start()
+
             self.image_frames_viewer.src_base64 = I
             self.image_frames_viewer.update()
 
@@ -105,7 +131,9 @@ class VideoContainer (Container):
             time.sleep(sleep_time)
             # time.sleep(round(self.__frame_per_sleep, 3))
             num = num + 1
-        pygame.mixer.quit()
+        
+        if self.__audio_path != None:
+            pygame.mixer.quit()
 
         if len(self.__all_frames_of_video) != int(self.video_frames):
             print("WARNING: Your device cant stream all video data and load it at the same time!, please set 'VideoContainer(play_after_loading=True)' to fix this issue.")
