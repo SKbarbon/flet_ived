@@ -50,4 +50,4 @@ flet.app(target=main)
 ```
 
 ## Note
-`Note`: **You should know that this built to be used for basic small or normal usage, its can NOT be used for big production cases, its a RAM consuming and slow for biger videos..**
+`Note`: **You should know that this built to be used for basic small or normal usage, its can NOT be used for big production cases, if you do so it will be a RAM consuming and slow for biger videos..**
