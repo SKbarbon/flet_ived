@@ -25,7 +25,7 @@ import time
 
 class VideoContainer (Container):
     """This will show a video you choose."""
-    def __init__(self, video_path:str, video_frame_fit_type:flet.ImageFit=None, content: Control | None = None, ref: Ref | None = None, key: str | None = None, width: OptionalNumber = None, height: OptionalNumber = None, left: OptionalNumber = None, top: OptionalNumber = None, right: OptionalNumber = None, bottom: OptionalNumber = None, expand: bool | int | None = None, col: ResponsiveNumber | None = None, opacity: OptionalNumber = None, rotate: RotateValue = None, scale: ScaleValue = None, offset: OffsetValue = None, aspect_ratio: OptionalNumber = None, animate_opacity: AnimationValue = None, animate_size: AnimationValue = None, animate_position: AnimationValue = None, animate_rotation: AnimationValue = None, animate_scale: AnimationValue = None, animate_offset: AnimationValue = None, on_animation_end=None, tooltip: str | None = None, visible: bool | None = None, disabled: bool | None = None, data: Any = None, padding: PaddingValue = None, margin: MarginValue = None, alignment: Alignment | None = None, bgcolor: str | None = None, gradient: Gradient | None = None, blend_mode: BlendMode = BlendMode.NONE, border: Border | None = None, border_radius: BorderRadiusValue = None, image_src: str | None = None, image_src_base64: str | None = None, image_repeat: ImageRepeat | None = None, image_fit: ImageFit | None = None, image_opacity: OptionalNumber = None, shape: BoxShape | None = None, clip_behavior: ClipBehavior | None = None, ink: bool | None = None, animate: AnimationValue = None, blur: float | int | Tuple[float | int, float | int] | Blur | None = None, shadow: BoxShadow | List[BoxShadow] | None = None, url: str | None = None, url_target: str | None = None, theme: Theme | None = None, theme_mode: ThemeMode | None = None, on_click=None, on_long_press=None, on_hover=None):
+    def __init__(self, video_path:str, play_after_loading=False, video_frame_fit_type:flet.ImageFit=None, content= None, ref = None, key = None, width = None, height= None, left = None, top = None, right = None, bottom= None, expand= None, col = None, opacity= None, rotate= None, scale= None, offset= None, aspect_ratio= None, animate_opacity= None, animate_size = None, animate_position= None, animate_rotation= None, animate_scale= None, animate_offset = None, on_animation_end=None, tooltip = None, visible = None, disabled= None, data = None, padding= None, margin= None, alignment = None, bgcolor= None, gradient= None, blend_mode=BlendMode.NONE, border= None, border_radius= None, image_src= None, image_src_base64= None, image_repeat=None, image_fit=None, image_opacity: OptionalNumber = None, shape=None, clip_behavior= None, ink= None, animate=None, blur=None, shadow= None, url=None, url_target=None, theme=None, theme_mode= None, on_click=None, on_long_press=None, on_hover=None):
         super().__init__(content, ref, key, width, height, left, top, right, bottom, expand, col, opacity, rotate, scale, offset, aspect_ratio, animate_opacity, animate_size, animate_position, animate_rotation, animate_scale, animate_offset, on_animation_end, tooltip, visible, disabled, data, padding, margin, alignment, bgcolor, gradient, blend_mode, border, border_radius, image_src, image_src_base64, image_repeat, image_fit, image_opacity, shape, clip_behavior, ink, animate, blur, shadow, url, url_target, theme, theme_mode, on_click, on_long_press, on_hover)
         if not os.path.isfile (video_path):
             raise FileNotFoundError ("Cannot find the video at the path you set.")
@@ -42,7 +42,11 @@ class VideoContainer (Container):
         self.__ui ()
 
         # start a video reader.
-        threading.Thread(target=self.read_the_video, args=[video_path], daemon=True).start()
+        if play_after_loading:
+            print("Please wait the video is loading..\nThis will take a time based on your video size...")
+            self.read_the_video(video_path)
+        else:
+            threading.Thread(target=self.read_the_video, args=[video_path], daemon=True).start()
 
         # setup the video audio
         self.audio_path = self.convert_video_to_audio (video_path)
@@ -101,8 +105,10 @@ class VideoContainer (Container):
             time.sleep(sleep_time)
             # time.sleep(round(self.__frame_per_sleep, 3))
             num = num + 1
-        
         pygame.mixer.quit()
+
+        if len(self.__all_frames_of_video) != int(self.video_frames):
+            print("WARNING: Your device cant stream all video data and load it at the same time!, please set 'VideoContainer(play_after_loading=True)' to fix this issue.")
     
 
     def pause (self, *args):
